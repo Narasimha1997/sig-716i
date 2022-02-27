@@ -93,7 +93,7 @@ func (w *Wireless) selectInterface(target string, ifaces []net.Interface) *Inter
 		opStr := string(op)
 		discoveryCount := strings.Count(opStr, " - Address:")
 
-		log.Printf("found %s devices on %s", discoveryCount, iface.Name)
+		log.Printf("found %d devices connected to %s", discoveryCount, iface.Name)
 		if discoveryCount >= currentMaxDiscoveries {
 			currentMaxDiscoveries = discoveryCount
 			currentMaxIfaceIndex = idx
