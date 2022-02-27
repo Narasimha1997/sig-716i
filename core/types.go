@@ -12,8 +12,12 @@ func (i *InternalError) Error() string {
 }
 
 const (
-	InterfaceProbeError int = -1
-	InterfaceNoWireless int = -2
+	InterfaceProbeError   int = -1
+	InterfaceNoWireless   int = -2
+	InterfaceCommandError int = -3
+	InterfaceNotFound     int = -4
+	InterfaceNoScanned    int = -5
+	InterfaceMonModeError int = -6
 )
 
 const (
