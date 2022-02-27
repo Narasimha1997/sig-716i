@@ -114,7 +114,9 @@ func (w *Wireless) selectInterface(target string, ifaces []net.Interface) *Inter
 	return nil
 }
 
-func (w *Wireless) turnOnMonMode(iface string) *InternalError {
+func (w *Wireless) turnOnMonMode() *InternalError {
+
+	iface := w.SelectedIface.Name
 
 	errReturn := func(err error) *InternalError {
 		return &InternalError{
@@ -166,6 +168,11 @@ func (w *Wireless) PrepareHost(target string) *InternalError {
 		w.SelectedIface.Name,
 		w.SelectedIface.HardwareAddr.String(),
 	)
+
+	ifErr = w.turnOnMonMode()
+	if ifErr != nil {
+		return ifErr
+	}
 
 	log.Println("prepared host interface")
 	return nil
