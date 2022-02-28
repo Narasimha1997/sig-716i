@@ -130,15 +130,21 @@ func (w *Wireless) turnOnMonMode() *InternalError {
 		return errReturn(err)
 	}
 
-	_, err = ExecCommand("iwconfig", iface, "mode", "managed")
+	// log.Printf("%s\n", string(op))
+
+	_, err = ExecCommand("iwconfig", iface, "mode", "monitor")
 	if err != nil {
 		return errReturn(err)
 	}
+
+	// log.Printf("%s\n", string(op))
 
 	_, err = ExecCommand("ip", "link", "set", iface, "up")
 	if err != nil {
 		return errReturn(err)
 	}
+
+	// log.Printf("%s\n", string(op))
 
 	return nil
 }
@@ -147,12 +153,6 @@ func (w *Wireless) turnOnMonMode() *InternalError {
 func (w *Wireless) PrepareHost(target string) *InternalError {
 	log.Println("scanning and selecting available network interfaces on the machine...")
 	ifaces, ifErr := w.probeWirelessInterfaces()
-	if ifErr != nil {
-		return ifErr
-	}
-
-	log.Println("bringing down network manager....")
-	ifErr = w.downNetworkManager()
 	if ifErr != nil {
 		return ifErr
 	}
@@ -168,6 +168,12 @@ func (w *Wireless) PrepareHost(target string) *InternalError {
 		w.SelectedIface.Name,
 		w.SelectedIface.HardwareAddr.String(),
 	)
+
+	log.Println("bringing down network manager....")
+	ifErr = w.downNetworkManager()
+	if ifErr != nil {
+		return ifErr
+	}
 
 	ifErr = w.turnOnMonMode()
 	if ifErr != nil {
