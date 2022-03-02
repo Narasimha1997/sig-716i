@@ -47,7 +47,19 @@ func (w *Wireless) probeWirelessInterfaces() ([]net.Interface, *InternalError) {
 }
 
 func (w *Wireless) downNetworkManager() *InternalError {
-	_, err := ExecCommand("pkill", "NetworkManager")
+	_, err := ExecCommand("systemctl", "stop", "NetworkManager")
+	if err != nil {
+		return &InternalError{
+			Status:  InterfaceCommandError,
+			Message: fmt.Sprintf("failed to bring down network manager %s", err.Error()),
+		}
+	}
+
+	return nil
+}
+
+func (w *Wireless) upNetworkManager() *InternalError {
+	_, err := ExecCommand("systemctl", "start", "NetworkManager")
 	if err != nil {
 		return &InternalError{
 			Status:  InterfaceCommandError,
@@ -114,7 +126,7 @@ func (w *Wireless) selectInterface(target string, ifaces []net.Interface) *Inter
 	return nil
 }
 
-func (w *Wireless) turnOnMonMode() *InternalError {
+func (w *Wireless) toggleMode(mode string) *InternalError {
 
 	iface := w.SelectedIface.Name
 
@@ -132,7 +144,7 @@ func (w *Wireless) turnOnMonMode() *InternalError {
 
 	// log.Printf("%s\n", string(op))
 
-	_, err = ExecCommand("iwconfig", iface, "mode", "monitor")
+	_, err = ExecCommand("iwconfig", iface, "mode", mode)
 	if err != nil {
 		return errReturn(err)
 	}
@@ -175,11 +187,29 @@ func (w *Wireless) PrepareHost(target string) *InternalError {
 		return ifErr
 	}
 
-	ifErr = w.turnOnMonMode()
+	ifErr = w.toggleMode("monitor")
 	if ifErr != nil {
 		return ifErr
 	}
 
 	log.Println("prepared host interface")
+	return nil
+}
+
+func (w *Wireless) RollbackHost() *InternalError {
+	log.Println("rolling back host configuration...")
+
+	ifErr := w.toggleMode("managed")
+	if ifErr != nil {
+		return ifErr
+	}
+
+	log.Println("starting network manager...")
+	ifErr = w.upNetworkManager()
+	if ifErr != nil {
+		return ifErr
+	}
+
+	log.Println("rolled back host interface")
 	return nil
 }
