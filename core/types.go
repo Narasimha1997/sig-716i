@@ -2,6 +2,11 @@ package core
 
 import "fmt"
 
+type CLIArgs struct {
+	Revert bool
+	Iface  string
+}
+
 type InternalError struct {
 	Message string
 	Status  int
@@ -18,6 +23,7 @@ const (
 	InterfaceNotFound     int = -4
 	InterfaceNoScanned    int = -5
 	InterfaceMonModeError int = -6
+	ArgParseError         int = -7
 )
 
 const (
