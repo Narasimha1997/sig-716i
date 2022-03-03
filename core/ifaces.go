@@ -196,8 +196,17 @@ func (w *Wireless) PrepareHost(target string) *InternalError {
 	return nil
 }
 
-func (w *Wireless) RollbackHost() *InternalError {
+func (w *Wireless) RollbackHost(ifname string) *InternalError {
 	log.Println("rolling back host configuration...")
+
+	if ifname == "" {
+		return &InternalError{
+			Status:  InterfaceNoRollback,
+			Message: "no interface specified to rollback",
+		}
+	}
+
+	w.SelectedIface.Name = ifname
 
 	ifErr := w.toggleMode("managed")
 	if ifErr != nil {

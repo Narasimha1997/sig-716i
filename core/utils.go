@@ -27,7 +27,7 @@ func ParseArgs() *CLIArgs {
 		Help:     "revert back the host to normal mode of operation",
 	})
 
-	manualIface := parser.String("if", "iface", &argparse.Options{
+	manualIface := parser.String("i", "iface", &argparse.Options{
 		Required: false,
 		Default:  "",
 		Help:     "specify the host interface manually",

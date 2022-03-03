@@ -23,7 +23,8 @@ const (
 	InterfaceNotFound     int = -4
 	InterfaceNoScanned    int = -5
 	InterfaceMonModeError int = -6
-	ArgParseError         int = -7
+	InterfaceNoRollback   int = -7
+	ArgParseError         int = -8
 )
 
 const (
