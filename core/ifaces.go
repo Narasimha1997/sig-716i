@@ -222,3 +222,7 @@ func (w *Wireless) RollbackHost(ifname string) *InternalError {
 	log.Println("rolled back host interface")
 	return nil
 }
+
+func (w *Wireless) GetIface() net.Interface {
+	return w.SelectedIface
+}

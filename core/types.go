@@ -25,6 +25,7 @@ const (
 	InterfaceMonModeError int = -6
 	InterfaceNoRollback   int = -7
 	ArgParseError         int = -8
+	PcapHandleError       int = -9
 )
 
 const (

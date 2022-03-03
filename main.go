@@ -17,6 +17,14 @@ func main() {
 			fmt.Printf("error: %s\n", err.Error())
 			os.Exit(err.Status)
 		}
+
+		selectedIface := iface.GetIface()
+		err = core.ListenForPacketsOnIface(&selectedIface)
+		if err != nil {
+			fmt.Printf("error: %s\n", err.Error())
+			os.Exit(err.Status)
+		}
+
 	} else {
 		err := iface.RollbackHost(args.Iface)
 		if err != nil {
