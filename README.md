@@ -1,6 +1,6 @@
 ## sig-716i
 
-A CLI tool written in Go that can be used to disrupt wireless connectivity in the area accessible to your wireless interface. This tool scans all the access points and wireless clients in your area and continuously sends large number of Deauth packets as per IEEE 802.11 protocol specification which blocks all the wireless devices from accessing the internet via Access Points (AP)
+A CLI tool written in Go that can be used to disrupt wireless connectivity in the area accessible to your wireless interface. This tool scans all the access points and wireless clients in your area and continuously sends large number of [Deauth packets](https://en.wikipedia.org/wiki/Wi-Fi_deauthentication_attack) as per [IEEE 802.11 protocol specification](https://en.wikipedia.org/wiki/IEEE_802.11) which blocks all the wireless devices from accessing the internet via Access Points (AP)
 
 This tool is built for educational purposes, using this tool against wireless defence equipments, medical equipments or public wireless network is strictly not encouraged.
 
