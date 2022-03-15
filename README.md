@@ -4,6 +4,8 @@ A CLI tool written in Go that can be used to disrupt wireless connectivity in th
 
 This tool is built for educational purposes, using this tool against wireless defence equipments, medical equipments or public wireless network is strictly not encouraged.
 
+**Disclaimer**: WiFi de-auth attack is illegal in some countries. Use it with caution.
+
 ### Requirements:
 1. Linux based operating system
 2. A system with wireless interface
