@@ -107,8 +107,12 @@ func (a *APManager) deauth(ch byte) {
 				pack1 := a.createPacket(client.Addr1, client.Addr2, client.Addr2, uint16(0))
 				pack2 := a.createPacket(client.Addr2, client.Addr1, client.Addr1, uint16(0))
 				allPackets = append(allPackets, pack1, pack2)
+
+				delete(a.ClientsMap, clientKey)
 			}
 		}
+
+		// clear this list:
 
 		a.ClientMutex.Unlock()
 	}
@@ -125,6 +129,8 @@ func (a *APManager) deauth(ch byte) {
 					allPackets = append(allPackets, pack1)
 				}
 			}
+
+			delete(a.APMap, apKey)
 		}
 
 		a.APMutex.Unlock()
