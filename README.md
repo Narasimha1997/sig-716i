@@ -32,17 +32,17 @@ sudo ./bin/sig-916i
 
 2. **Run with specifying the wireless interface:** You can also specify the interface to use manually. This can be done by passing the option `-i` followed by the name of the wireless interface.
 ```
-sudo ./bin/sig-916i -i wlp13s0
+sudo ./bin/sig-916i -i <interface-name>
 ```
 
 Either of the above two commands should start scanning for the wireless APs and devices, later sends the deauth packets to these probed devices. The tool keeps scanning in background so new devices and APs are added to the list as and when they are detected.
 
-***Notes:**
+**Notes:**
 1. The tool will bring down the wireless interface to monitor mode when starting the attack so you will not be able to access the internet until the tool is running. (you can still use the internet if you have another active wireless interface or ethernet)
 
 2. When exiting, the tool will bring back the interface to normal mode (managed) so you should get internet back, in case it fails, run this command to manually rollback:
 ```
-sudo ./bin/sig-916i --revert -i wlp13s0
+sudo ./bin/sig-916i --revert -i <interface-name>
 ```
 
 3. If your wireless interface supports only `2.4Ghz` then it cannot attack devices connected via `5GHz` channel, so it is always recommended to use an interface that supports `5GHz` channel. However this is not mandatory.
