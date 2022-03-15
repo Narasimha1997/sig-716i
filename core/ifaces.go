@@ -11,7 +11,7 @@ type Wireless struct {
 	SelectedIface net.Interface
 }
 
-func (w *Wireless) probeWirelessInterfaces() ([]net.Interface, *InternalError) {
+func (w *Wireless) probeWirelessInterfaces(filter bool) ([]net.Interface, *InternalError) {
 	interfaces, err := net.Interfaces()
 
 	wirelessIfaces := make([]net.Interface, 0)
@@ -26,12 +26,15 @@ func (w *Wireless) probeWirelessInterfaces() ([]net.Interface, *InternalError) {
 	for _, iface := range interfaces {
 		ifaceName := iface.Name
 		log.Printf("found interface name=%s, mac=%s", iface.Name, iface.HardwareAddr)
-		if !strings.HasPrefix(ifaceName, IfacePrefixWifi) {
-			log.Printf("skippig %s, not a wireless interface", ifaceName)
-			continue
+
+		if filter {
+			if !strings.HasPrefix(ifaceName, IfacePrefixWifi) {
+				log.Printf("skippig %s, not a wireless interface", ifaceName)
+				continue
+			}
 		}
 
-		log.Printf("found wireless interface name=%s, mac=%s", ifaceName, iface.HardwareAddr)
+		log.Printf("adding interface name=%s, mac=%s to list", ifaceName, iface.HardwareAddr)
 		wirelessIfaces = append(wirelessIfaces, iface)
 	}
 
@@ -164,7 +167,13 @@ func (w *Wireless) toggleMode(mode string) *InternalError {
 // SetupBaseInterface prepares the host machine to launch the attack
 func (w *Wireless) PrepareHost(target string) *InternalError {
 	log.Println("scanning and selecting available network interfaces on the machine...")
-	ifaces, ifErr := w.probeWirelessInterfaces()
+
+	shouldFilter := true
+	if target != "" {
+		shouldFilter = false
+	}
+
+	ifaces, ifErr := w.probeWirelessInterfaces(shouldFilter)
 	if ifErr != nil {
 		return ifErr
 	}
