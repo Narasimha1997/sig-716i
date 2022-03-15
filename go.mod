@@ -1,4 +1,4 @@
-module brute
+module sig-716i
 
 go 1.17
 

