@@ -42,8 +42,8 @@ type APManager struct {
 	BroadcastMac   net.HardwareAddr
 	WriteHandle    *pcap.Handle
 
-	IncludeAPs     []string
-	IncludeClients []string
+	IncludeAPs     string
+	IncludeClients string
 }
 
 func NewAPManager(monIface string, handle *pcap.Handle, env *CLIArgs) *APManager {
@@ -72,10 +72,8 @@ func (a *APManager) shouldIncludeAP(addr string) bool {
 	}
 
 	// is this address in the AP?
-	for _, target := range a.IncludeAPs {
-		if addr == target {
-			return true
-		}
+	if strings.Contains(a.IncludeAPs, strings.ToLower(addr)) {
+		return true
 	}
 
 	return false
@@ -87,10 +85,8 @@ func (a *APManager) shouldIncludeClient(addr string) bool {
 	}
 
 	// is this address in the AP?
-	for _, target := range a.IncludeClients {
-		if addr == target {
-			return true
-		}
+	if strings.Contains(a.IncludeClients, strings.ToLower(addr)) {
+		return true
 	}
 
 	return false

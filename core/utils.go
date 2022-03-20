@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/akamensky/argparse"
 )
@@ -54,7 +53,7 @@ func ParseArgs() *CLIArgs {
 	return &CLIArgs{
 		Revert:          *revert,
 		Iface:           *manualIface,
-		FilteredAPs:     strings.Split(*targetAPs, ","),
-		FilteredClients: strings.Split(*targetClients, ","),
+		FilteredAPs:     *targetAPs,
+		FilteredClients: *targetClients,
 	}
 }

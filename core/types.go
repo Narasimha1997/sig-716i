@@ -5,8 +5,8 @@ import "fmt"
 type CLIArgs struct {
 	Revert          bool
 	Iface           string
-	FilteredAPs     []string
-	FilteredClients []string
+	FilteredAPs     string
+	FilteredClients string
 }
 
 type InternalError struct {
