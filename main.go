@@ -35,7 +35,7 @@ func main() {
 		}
 
 		selectedIface := iface.GetIface()
-		err = core.ListenForPacketsOnIface(&selectedIface)
+		err = core.ListenForPacketsOnIface(&selectedIface, args)
 		if err != nil {
 			fmt.Printf("error: %s\n", err.Error())
 			cleanUp(iface)

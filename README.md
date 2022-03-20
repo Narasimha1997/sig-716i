@@ -29,12 +29,12 @@ The tool requires to be run as `sudo` or as a root user.
 1. **Run without specifying the wireless interface:** When no wireless interface is selected, the tool looks for the best wireless interface available on the host. If multiple wireless interfaces are present, best one will be selected based on the number of APs discoverable by that interface.
 
 ```
-sudo ./bin/sig-916i
+sudo ./bin/sig-716i
 ```
 
 2. **Run with specifying the wireless interface:** You can also specify the interface to use manually. This can be done by passing the option `-i` followed by the name of the wireless interface.
 ```
-sudo ./bin/sig-916i -i <interface-name>
+sudo ./bin/sig-716i -i <interface-name>
 ```
 
 Either of the above two commands should start scanning for the wireless APs and devices, later sends the deauth packets to these probed devices. The tool keeps scanning in background so new devices and APs are added to the list as and when they are detected.
@@ -44,7 +44,7 @@ Either of the above two commands should start scanning for the wireless APs and 
 
 2. When exiting, the tool will bring back the interface to normal mode (managed) so you should get internet back, in case it fails, run this command to manually rollback:
 ```
-sudo ./bin/sig-916i --revert -i <interface-name>
+sudo ./bin/sig-716i --revert -i <interface-name>
 ```
 
 3. If your wireless interface supports only `2.4Ghz` then it cannot attack devices connected via `5GHz` channel, so it is always recommended to use an interface that supports `5GHz` channel. However this is not mandatory.

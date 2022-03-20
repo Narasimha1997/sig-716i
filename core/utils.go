@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/akamensky/argparse"
 )
@@ -33,13 +34,27 @@ func ParseArgs() *CLIArgs {
 		Help:     "specify the host interface manually",
 	})
 
+	targetAPs := parser.String("a", "aps", &argparse.Options{
+		Required: false,
+		Default:  "",
+		Help:     "list of target BSSIDs of Access Points, ex: 52:54:00:eb:16:9d,02:42:93:53:b4:7b,...",
+	})
+
+	targetClients := parser.String("c", "clients", &argparse.Options{
+		Required: false,
+		Default:  "",
+		Help:     "list of MAC addresses of the client devices, ex: 52:54:00:eb:16:9d,02:42:93:53:b4:7b,...",
+	})
+
 	err := parser.Parse(os.Args)
 	if err != nil {
 		log.Fatalf("failed to parse arguments, invalid args")
 	}
 
 	return &CLIArgs{
-		Revert: *revert,
-		Iface:  *manualIface,
+		Revert:          *revert,
+		Iface:           *manualIface,
+		FilteredAPs:     strings.Split(*targetAPs, ","),
+		FilteredClients: strings.Split(*targetClients, ","),
 	}
 }

@@ -41,9 +41,12 @@ type APManager struct {
 	MonIface       string
 	BroadcastMac   net.HardwareAddr
 	WriteHandle    *pcap.Handle
+
+	IncludeAPs     []string
+	IncludeClients []string
 }
 
-func NewAPManager(monIface string, handle *pcap.Handle) *APManager {
+func NewAPManager(monIface string, handle *pcap.Handle, env *CLIArgs) *APManager {
 	bMac := []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
 	bAddr := net.HardwareAddr(bMac)
 
@@ -57,7 +60,40 @@ func NewAPManager(monIface string, handle *pcap.Handle) *APManager {
 		MonIface:       monIface,
 		BroadcastMac:   bAddr,
 		WriteHandle:    handle,
+
+		IncludeAPs:     env.FilteredAPs,
+		IncludeClients: env.FilteredClients,
 	}
+}
+
+func (a *APManager) shouldIncludeAP(addr string) bool {
+	if len(a.IncludeAPs) == 0 {
+		return true
+	}
+
+	// is this address in the AP?
+	for _, target := range a.IncludeAPs {
+		if addr == target {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (a *APManager) shouldIncludeClient(addr string) bool {
+	if len(a.IncludeClients) == 0 {
+		return true
+	}
+
+	// is this address in the AP?
+	for _, target := range a.IncludeClients {
+		if addr == target {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (a *APManager) createPacket(addr1 net.HardwareAddr, addr2 net.HardwareAddr, addr3 net.HardwareAddr, seq uint16) []byte {
@@ -160,7 +196,7 @@ func (a *APManager) startAttack() {
 		}
 
 		// use this channel
-		_, iError := ExecCommand("iw", "dev", a.MonIface, "set", "channel", fmt.Sprintf("%d", currentAttackChannel))
+		_, iError := ExecCommand("iwconfig", a.MonIface, "channel", fmt.Sprintf("%d", currentAttackChannel))
 		if iError != nil {
 			log.Fatalf("failed to set attack channel: %s", iError.Error())
 			os.Exit(InterfaceCommandError)
@@ -199,6 +235,11 @@ func (a *APManager) addClient(addr1 net.HardwareAddr, addr2 net.HardwareAddr) {
 	addr1Str := addr1.String()
 	addr2Str := addr2.String()
 
+	// should this client be included?
+	if !a.shouldIncludeClient(addr1Str) && !a.shouldIncludeClient(addr2Str) {
+		return
+	}
+
 	clKey := fmt.Sprintf("%s::%s", addr1Str, addr2Str)
 	_, ok := a.ClientsMap[clKey]
 	if ok {
@@ -235,6 +276,12 @@ func (a *APManager) addAPList(bssid net.HardwareAddr, packet gopacket.Packet) {
 	defer a.APMutex.Unlock()
 
 	bssidStr := bssid.String()
+
+	// should this BSSID be included?
+	if !a.shouldIncludeAP(bssidStr) {
+		return
+	}
+
 	// BSSID already in map?
 	_, ok := a.APMap[bssidStr]
 	if ok {
@@ -271,7 +318,7 @@ func (a *APManager) CheckAndParseDot11(packet gopacket.Packet) {
 
 		// is this access point already in the list?
 		// the probe response originate from AP as a response to client probe
-		// becaons originate periodically from APs used for discovery purposes
+		// becons originate periodically from APs used for discovery purposes
 		dot11Probe := packet.Layer(layers.LayerTypeDot11MgmtProbeResp)
 		dot11Beacon := packet.Layer(layers.LayerTypeDot11MgmtBeacon)
 
@@ -291,7 +338,7 @@ func (a *APManager) CheckAndParseDot11(packet gopacket.Packet) {
 
 var apManager *APManager = nil
 
-func ListenForPacketsOnIface(iface *net.Interface) *InternalError {
+func ListenForPacketsOnIface(iface *net.Interface, env *CLIArgs) *InternalError {
 	readHandle, err := pcap.OpenLive(iface.Name, 1024, false, pcap.BlockForever)
 	if err != nil {
 		return &InternalError{
@@ -308,7 +355,7 @@ func ListenForPacketsOnIface(iface *net.Interface) *InternalError {
 		}
 	}
 
-	apManager = NewAPManager(iface.Name, writeHandle)
+	apManager = NewAPManager(iface.Name, writeHandle, env)
 	log.Println("initialized Aaccess points manager")
 
 	pcapSource := gopacket.NewPacketSource(readHandle, readHandle.LinkType())
