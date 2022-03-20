@@ -49,8 +49,6 @@ sudo ./bin/sig-716i --revert -i <interface-name>
 
 3. If your wireless interface supports only `2.4Ghz` then it cannot attack devices connected via `5GHz` channel, so it is always recommended to use an interface that supports `5GHz` channel. However this is not mandatory.
 
-### TODO:
-1. Targetting specific AP or client device
 
 ### Credits:
 [pywifijammer](https://github.com/DanMcInerney/wifijammer) - python version of wifi jammer
