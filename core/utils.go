@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/akamensky/argparse"
 )
@@ -20,7 +21,7 @@ func ExecCommand(args ...string) ([]byte, error) {
 
 // populate and return the CLIArgs struct
 func ParseArgs() *CLIArgs {
-	parser := argparse.NewParser("brute", "a CLI tool for bombing wireless networks")
+	parser := argparse.NewParser("sig-716i", "a CLI tool for bombing wireless networks")
 	revert := parser.Flag("r", "revert", &argparse.Options{
 		Required: false,
 		Default:  false,
@@ -53,7 +54,7 @@ func ParseArgs() *CLIArgs {
 	return &CLIArgs{
 		Revert:          *revert,
 		Iface:           *manualIface,
-		FilteredAPs:     *targetAPs,
-		FilteredClients: *targetClients,
+		FilteredAPs:     strings.ToLower(*targetAPs),
+		FilteredClients: strings.ToLower(*targetClients),
 	}
 }

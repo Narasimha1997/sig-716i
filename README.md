@@ -82,7 +82,7 @@ sudo ./bin/sig-716i --revert -i <interface-name>
 
 **If your physical interface does not support monitoring mode:** You may have to buy a wireless    adapter that supports monitoring mode.
 
-**If your driver does not support monitoring mode:**: You may have to patch your wireless driver to support monitoring mode, this is easy on Linux based operating systems. You may have to download the patched driver source code, compile it and build a kernel module, then you can load this kernel module by blacklisting your existing driver. For example the kernel module **r8188eu** has it's patched variant 
+**If your driver does not support monitoring mode:** You may have to patch your wireless driver to support monitoring mode, this is easy on Linux based operating systems. You may have to download the patched driver source code, compile it and build a kernel module, then you can load this kernel module by blacklisting your existing driver. For example the kernel module **r8188eu** has it's patched variant 
 [rtl8188eus](https://github.com/aircrack-ng/rtl8188eus).
 
 ### TODO:
