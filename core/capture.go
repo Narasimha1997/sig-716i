@@ -192,9 +192,22 @@ func (a *APManager) startAttack() {
 		}
 
 		// use this channel
-		_, iError := ExecCommand("iwconfig", a.MonIface, "channel", fmt.Sprintf("%d", currentAttackChannel))
-		if iError != nil {
-			log.Fatalf("failed to set attack channel: %s", iError.Error())
+		isError := false
+		for i := 0; i < 10; i++ {
+			_, iError := ExecCommand("iwconfig", a.MonIface, "channel", fmt.Sprintf("%d", currentAttackChannel))
+			if iError != nil {
+				log.Printf("failed to set attack channel: %s", iError.Error())
+				isError = true
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			isError = false
+			break
+		}
+
+		if isError {
+			log.Fatalf("failed to set attack channel")
 			os.Exit(InterfaceCommandError)
 		}
 
